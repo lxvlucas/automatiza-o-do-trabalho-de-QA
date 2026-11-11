@@ -72,7 +72,43 @@ def ct005():
         driver.find_element(By.ID, "vNOVASENHA").send_keys("SenhaForte@82")
         driver.find_element(By.ID, "vNOVASENHA2").send_keys("OutraSenha@82")
         driver.find_element(By.ID, "vNOVASENHA2").send_keys(Keys.RETURN)
-        msg = wait.until(EC.visibility_of_element_located((By.ID, XPATH_MSG)))
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, XPATH_MSG)))
         assert "Senhas informadas são diferentes" in msg.text
     finally:
         driver.quit()
+ct005()
+
+def ct006():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
+        driver.find_element(By.ID, "vLOGIN").send_keys("lucasgomesantunes85@gmail.com")
+        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
+        driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
+        msg = wait.until(EC.visibility_of_element_located((By.ID, "W0012TEXTBLOCKBOASVINDAS")))
+        assert "Olá, LUCAS!" in msg.text
+    finally:
+        driver.quit()
+ct006()
+
+def login():
+        driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
+        driver.find_element(By.ID, "vLOGIN").send_keys("lucasgomesantunes85@gmail.com")
+        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
+        driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
+
+def ct007():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login()
+        driver.find_element(By.ID, "W0012TEXTBLOCK2").click()
+        wait.until(EC.visibility_of_element_located((By.ID, "RSCUR_NOME")))
+        driver.find_element(By.ID,"RSCUR_NOME").send_keys(Keys.BACKSPACE)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        assert "Nome Completo deve ser informado" in driver.find_element(By.ID, "RSCUR_NOME_Balloon")
+    finally:
+        driver.quit()
+ct007()
+
