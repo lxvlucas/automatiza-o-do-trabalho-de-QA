@@ -240,7 +240,7 @@ def ct022():
         assert "(98) 99999-1111" in campo.get_attribute("value")
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -294,7 +294,7 @@ def ct024():
         assert "15/03/2005" in campo.get_attribute("value")
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -319,7 +319,7 @@ def ct025():
         assert driver.find_element(By.ID, "RSCUR_DES_NECESSIDADE").is_displayed()
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -346,7 +346,7 @@ def ct026():
         time.sleep(2)
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -372,7 +372,7 @@ def ct027():
         time.sleep(2)
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -398,7 +398,7 @@ def ct028():
         time.sleep(2)
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -424,7 +424,7 @@ def ct029():
         time.sleep(2)
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         driver.refresh()
         time.sleep(3)
@@ -443,18 +443,18 @@ def ct030():
         time.sleep(3)
         wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
         time.sleep(3)
-        driver.find_element(By.CSS_SELECTOR, "label[for='RSCUR_OPCAO_NOME2']").click()
+        driver.find_element(By.XPATH, "//label[@for='RSCUR_OPCAO_NOME2']").click()
         time.sleep(2)
         social = driver.find_element(By.ID, "RSCUR_NOME")
         civil = driver.find_element(By.ID, "RSCUR_CIVIL")
         social.clear()
         time.sleep(2)
         social.send_keys("Lucas Davi")
-        civil.send_keys("Lucas Gilberto Davi")
+        civil.send_keys(Keys.CONTROL, "a", Keys.NULL, "Lucas Gilberto Davi")
         time.sleep(2)
         driver.find_element(By.ID, "BTNSALVAR").click()
         time.sleep(2)
-        msg = driver.find_element(By.CSS_SELECTOR, ".gx-success-message")
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
         assert "Currículo atualizado com sucesso." in msg.text
         saudacao = driver.find_element(By.XPATH, "/html/body/form/div[2]/div[2]/div/div[2]/div/div/div[4]/div/div/div[2]/span")
         assert "Bem-vindo, Lucas Davi" in saudacao.text
@@ -464,7 +464,7 @@ def ct030():
         social = driver.find_element(By.ID, "RSCUR_NOME")
         assert "Lucas Davi" in social.get_attribute("value")
         civil = driver.find_element(By.ID, "RSCUR_CIVIL")
-        assert "Lucas Gilberto Davi" in civil.get_attribute("value")
+        assert civil.get_attribute("value") == "Lucas Gilberto Davi"
     finally:
         driver.quit()
 ct030()
