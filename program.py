@@ -3,20 +3,63 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
 import time
 
 erro_login_msg = "/html/body/form/div[2]/div[2]/div/div[1]/div/div/div/div[2]/div/div[3]/div/div/div/div/div[4]/div/div/div/div/span/div"
 
 #funcão: login
 def login(driver):
+        email = os.getenv("IEL_EMAIL")
+        senha = os.getenv("IEL_PASSWORD")
+        if not email or not senha:
+            raise RuntimeError("Defina IEL_EMAIL e IEL_PASSWORD antes de executar os testes.")
         driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
         time.sleep(2)
         campo = driver.find_element(By.ID, "vLOGIN")
         campo.send_keys(Keys.CONTROL, "a", Keys.NULL, Keys.DELETE)
-        campo.send_keys("lucasgomesantunes85@gmail.com")
+        campo.send_keys(email)
         driver.find_element(By.ID, "vSENHA").send_keys(Keys.CONTROL, "a", Keys.NULL, Keys.DELETE)
-        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
+        driver.find_element(By.ID, "vSENHA").send_keys(senha)
         driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
+
+#função auxiliar para garantir a pré-condição de idiomas salva no banco
+def preparar_idiomas(driver, ing, esp, out):
+    ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+    espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+    outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+    alterou = False
+    if ing and not ingles.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
+        time.sleep(1)
+        alterou = True
+    if esp and not espanhol.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(1)
+        alterou = True
+    if out and not outro.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
+        time.sleep(1)
+        alterou = True
+    if not ing and ingles.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
+        time.sleep(1)
+        alterou = True
+    if not esp and espanhol.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(1)
+        alterou = True
+    if not out and outro.is_selected():
+        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
+        time.sleep(1)
+        alterou = True
+    if alterou:
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
 
 #Começo das CTs do lucas <3 :3 >w< ;P
 #1. Entrar com e-mail e senha inválidos sem sucesso
@@ -101,10 +144,7 @@ def ct006():
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 10)
     try:
-        driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
-        driver.find_element(By.ID, "vLOGIN").send_keys("lucasgomesantunes85@gmail.com")
-        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
-        driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
+        login(driver)
         msg = wait.until(EC.visibility_of_element_located((By.XPATH, "/html/body/form/div[2]/div[2]/div/div[2]/div/div/div[4]/div/div/div[2]/span")))
         assert "Bem-vindo, Lucas Gilberto Davi" in msg.text
     finally:
@@ -468,5 +508,393 @@ def ct030():
     finally:
         driver.quit()
 ct030()
+
 #fim das CTs do lucassssss <333
 
+#41. Selecionar Inglês em conhecimentos de idioma com sucesso
+def ct041():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, True, True, False)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert espanhol.is_selected()
+        assert not outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert not outro.is_selected()
+    finally:
+        driver.quit()
+ct041()
+
+#42. Selecionar Inglês e Espanhol em conhecimentos de idioma com sucesso
+def ct042():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, True, True, True)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert espanhol.is_selected()
+        assert outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert espanhol.is_selected()
+        assert not outro.is_selected()
+    finally:
+        driver.quit()
+ct042()
+
+#43. Selecionar Inglês e Espanhol e Outro em conhecimentos de idioma com sucesso
+def ct043():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, False, False, True)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
+        time.sleep(2)
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert espanhol.is_selected()
+        assert outro.is_selected()
+    finally:
+        driver.quit()
+ct043()
+
+#44. Selecionar Espanhol e Outro em conhecimentos de idioma com sucesso
+def ct044():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, False, True, False)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert espanhol.is_selected()
+        assert not outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert espanhol.is_selected()
+        assert outro.is_selected()
+    finally:
+        driver.quit()
+ct044()
+
+#45. Selecionar Outro em conhecimentos de idioma com sucesso
+def ct045():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, False, True, True)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert espanhol.is_selected()
+        assert outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert outro.is_selected()
+    finally:
+        driver.quit()
+ct045()
+
+#46. Selecionar Espanhol em conhecimentos de idioma com sucesso
+def ct046():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, True, False, False)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert not outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
+        time.sleep(2)
+        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert not ingles.is_selected()
+        assert espanhol.is_selected()
+        assert not outro.is_selected()
+    finally:
+        driver.quit()
+ct046()
+
+#47. Selecionar nenhum idioma em conhecimentos de idioma sem sucesso
+def ct047():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        preparar_idiomas(driver, True, False, False)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert not outro.is_selected()
+        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//*[contains(text(), 'Pergunta obrigatória')]")
+        assert "Pergunta obrigatória" in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
+        assert "Quais idiomas você tem conhecimento?" in pergunta.text
+        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
+        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
+        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+        assert ingles.is_selected()
+        assert not espanhol.is_selected()
+        assert not outro.is_selected()
+    finally:
+        driver.quit()
+ct047()
+
+#48. Salvar previsão de formatura anterior à data atual com sucesso
+def ct048():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        campo.send_keys(Keys.CONTROL, "a", Keys.NULL, "01012026")
+        driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]").click()
+        time.sleep(2)
+        assert "01/01/2026" in campo.get_attribute("value")
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        assert "01/01/2026" in campo.get_attribute("value")
+    finally:
+        driver.quit()
+ct048()
+
+#49. Salvar previsão de formatura futura com sucesso
+def ct049():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        campo.send_keys(Keys.CONTROL, "a", Keys.NULL, "01122029")
+        driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]").click()
+        time.sleep(2)
+        assert "01/12/2029" in campo.get_attribute("value")
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        time.sleep(2)
+        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        assert "Informações atualizadas com sucesso." in msg.text
+        driver.refresh()
+        time.sleep(3)
+        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
+        time.sleep(3)
+        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        assert "01/12/2029" in campo.get_attribute("value")
+    finally:
+        driver.quit()
+ct049()
+
+#50. Acessar a área do candidato após sair da conta sem sucesso
+def ct050():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        driver.find_element(By.ID, "W0012IMAGE1").click()
+        time.sleep(2)
+        meus_dados = driver.find_element(By.XPATH, "//*[normalize-space()='Meus dados']")
+        sair = driver.find_element(By.XPATH, "//*[normalize-space()='Sair']")
+        assert "Meus dados" in meus_dados.text
+        assert "Sair" in sair.text
+        sair.click()
+        time.sleep(3)
+        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        driver.get('https://admin.ielcarreiras.com.br/hetpaginainicialcurriculo.aspx')
+        time.sleep(3)
+        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        driver.get('https://admin.ielcarreiras.com.br/HSgpAcessoCurriculo.aspx?hetpaginainicial.aspx')
+        time.sleep(3)
+        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        driver.back()
+        time.sleep(3)
+        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+    finally:
+        driver.quit()
+ct050()
+#cts 41-50 do Gabriel <3

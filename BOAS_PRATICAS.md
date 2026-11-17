@@ -120,14 +120,14 @@ Regras:
 
 ## 5. Dados de teste e segurança
 
-- Os e-mails e senhas existentes no código (`lucasgomesantunes85@gmail.com`, `lucas123test456@gmail.com` etc.)
-  são **contas de teste do usuário**. **Não os copie para a documentação, commits, issues ou mensagens** além do estritamente necessário.
+- Não grave credenciais em código, documentação, commits ou mensagens. `login(driver)` lê as variáveis de ambiente
+  `IEL_EMAIL` e `IEL_PASSWORD`.
 - Em CTs novos que precisem de credenciais, **reutilize `login(driver)`**, em vez de escrever e-mail e senha de novo.
 - **Não crie contas novas, não altere dados reais de candidatos e não clique em ações irreversíveis** (excluir, enviar, candidatar-se)
   sem o usuário pedir. O ambiente testado é o `admin.ielcarreiras.com.br`, que é um site real.
 - Para cadastros, siga o padrão dos e-mails de teste já usados (`AAAAMMDD@example.com`, domínio `example.com`).
-- Se algum dia o código for publicado (GitHub etc.), avise o usuário que as senhas estão em texto puro e sugira mover para
-  variáveis de ambiente. Faça isso **só se ele pedir**.
+- Antes de publicar, confirme que dados de teste não identificam pessoas e que credenciais não foram adicionadas ao código.
+  Se uma credencial já apareceu no histórico Git, remova-a do código e solicite sua rotação; editar o arquivo não apaga o histórico.
 
 ---
 
@@ -147,6 +147,7 @@ Regras:
 
 - Os CTs **rodam ao importar/executar o arquivo**, porque cada `ctNNN()` é chamado logo após a definição.
   Para testar só um CT, comente temporariamente as outras chamadas e **avise o usuário** para restaurá-las.
+- Antes de executar, defina as variáveis de ambiente `IEL_EMAIL` e `IEL_PASSWORD` com as credenciais da conta de teste.
 - Execute com o Python do `venv`: `.\venv\Scripts\python.exe program.py`.
 - Um `assert` que falha encerra o script e os CTs seguintes **não rodam**. Isso é esperado no estilo atual. Não mude para "continuar mesmo com falha" sem pedirem.
 - Se o script travar ou der `ConnectionRefusedError`, verifique:
