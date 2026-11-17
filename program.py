@@ -3,55 +3,71 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 import os
 import time
 
 erro_login_msg = "/html/body/form/div[2]/div[2]/div/div[1]/div/div/div/div[2]/div/div[3]/div/div/div/div/div[4]/div/div/div/div/span/div"
+#checkbox de uma opção da pergunta de idiomas (o texto da opção é um span na mesma linha do checkbox, não um label)
+idioma_checkbox = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Quais idiomas você tem conhecimento?']]//span[normalize-space()='{}']/ancestor::div[contains(@id, 'GRID3TABLE')]//input[@type='checkbox']"
+#onde clicar para marcar/desmarcar a opção (o input fica escondido, quem recebe o clique é o label que envolve ele)
+idioma_clique = idioma_checkbox + "/parent::label"
+pergunta_idiomas = "//span[normalize-space()='Quais idiomas você tem conhecimento?']"
+#campo de data da pergunta de previsão de formatura
+formatura_data = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Qual sua previsão de formatura?']]//input[contains(@id, 'vRESPOSTA_DATA')]"
 
 #funcão: login
 def login(driver):
-        driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
-        driver.find_element(By.ID, "vLOGIN").send_keys("lucasgomesantunes85@gmail.com")
-        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
-        driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
+    wait = WebDriverWait(driver, 10)
+    driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
+    campo_login = wait.until(EC.element_to_be_clickable((By.ID, "vLOGIN")))
+    campo_senha = wait.until(EC.element_to_be_clickable((By.ID, "vSENHA")))
+    time.sleep(1)  
+    campo_login.clear()
+    campo_login.send_keys("lucasgomesantunes85@gmail.com")
+    campo_senha.clear()
+    campo_senha.send_keys("98765lucastest")
+    assert campo_login.get_attribute("value") == "lucasgomesantunes85@gmail.com"
+    campo_senha.send_keys(Keys.RETURN)
+
+#função: abrir a aba Dados Adicionais do Meu Currículo
+def abrir_dados_adicionais(driver):
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+    time.sleep(3)
+    wait.until(EC.element_to_be_clickable((By.ID, "Tab_TAB1Containerpanel2"))).click()
+    wait.until(EC.visibility_of_element_located((By.XPATH, pergunta_idiomas)))
+    time.sleep(2)
+
+#função: reabrir a aba Dados Adicionais depois de salvar
+#refresh() depois de salvar volta a aba sem as perguntas, por isso abre de novo pela página inicial
+def reabrir_dados_adicionais(driver):
+    driver.get('https://admin.ielcarreiras.com.br/hetpaginainicialcurriculo.aspx')
+    abrir_dados_adicionais(driver)
+
+#função: conferir quais idiomas estão marcados
+def conferir_idiomas(driver, ing, esp, out):
+    pergunta = driver.find_element(By.XPATH, pergunta_idiomas)
+    assert "Quais idiomas você tem conhecimento?" in pergunta.text
+    assert driver.find_element(By.XPATH, idioma_checkbox.format("Inglês")).is_selected() == ing
+    assert driver.find_element(By.XPATH, idioma_checkbox.format("Espanhol")).is_selected() == esp
+    assert driver.find_element(By.XPATH, idioma_checkbox.format("Outro")).is_selected() == out
 
 #função auxiliar para garantir a pré-condição de idiomas salva no banco
 def preparar_idiomas(driver, ing, esp, out):
-    ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-    espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-    outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
+    wait = WebDriverWait(driver, 10)
     alterou = False
-    if ing and not ingles.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
-        time.sleep(1)
-        alterou = True
-    if esp and not espanhol.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(1)
-        alterou = True
-    if out and not outro.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
-        time.sleep(1)
-        alterou = True
-    if not ing and ingles.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
-        time.sleep(1)
-        alterou = True
-    if not esp and espanhol.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(1)
-        alterou = True
-    if not out and outro.is_selected():
-        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
-        time.sleep(1)
-        alterou = True
+    for opcao, marcar in (("Inglês", ing), ("Espanhol", esp), ("Outro", out)):
+        checkbox = driver.find_element(By.XPATH, idioma_checkbox.format(opcao))
+        if checkbox.is_selected() != marcar:
+            driver.find_element(By.XPATH, idioma_clique.format(opcao)).click()
+            time.sleep(1)
+            alterou = True
     if alterou:
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
 
 #Começo das CTs do lucas <3 :3 >w< ;P
 #1. Entrar com e-mail e senha inválidos sem sucesso
@@ -506,38 +522,16 @@ def ct041():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, True, True, False)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert espanhol.is_selected()
-        assert not outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, True, True, False)
+        driver.find_element(By.XPATH, idioma_clique.format("Espanhol")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert not outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, True, False, False)
     finally:
         driver.quit()
 ct041()
@@ -548,38 +542,16 @@ def ct042():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, True, True, True)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert espanhol.is_selected()
-        assert outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, True, True, True)
+        driver.find_element(By.XPATH, idioma_clique.format("Outro")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert espanhol.is_selected()
-        assert not outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, True, True, False)
     finally:
         driver.quit()
 ct042()
@@ -590,40 +562,18 @@ def ct043():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, False, False, True)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
-        time.sleep(2)
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, False, False, True)
+        driver.find_element(By.XPATH, idioma_clique.format("Inglês")).click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, idioma_clique.format("Espanhol")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert espanhol.is_selected()
-        assert outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, True, True, True)
     finally:
         driver.quit()
 ct043()
@@ -634,38 +584,16 @@ def ct044():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, False, True, False)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert espanhol.is_selected()
-        assert not outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Outro']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, False, True, False)
+        driver.find_element(By.XPATH, idioma_clique.format("Outro")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert espanhol.is_selected()
-        assert outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, False, True, True)
     finally:
         driver.quit()
 ct044()
@@ -676,38 +604,16 @@ def ct045():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, False, True, True)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert espanhol.is_selected()
-        assert outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, False, True, True)
+        driver.find_element(By.XPATH, idioma_clique.format("Espanhol")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, False, False, True)
     finally:
         driver.quit()
 ct045()
@@ -718,40 +624,18 @@ def ct046():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, True, False, False)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert not outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
-        time.sleep(2)
-        driver.find_element(By.XPATH, "//label[normalize-space()='Espanhol']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        conferir_idiomas(driver, True, False, False)
+        driver.find_element(By.XPATH, idioma_clique.format("Inglês")).click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, idioma_clique.format("Espanhol")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert not ingles.is_selected()
-        assert espanhol.is_selected()
-        assert not outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, False, True, False)
     finally:
         driver.quit()
 ct046()
@@ -762,38 +646,16 @@ def ct047():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
+        abrir_dados_adicionais(driver)
         preparar_idiomas(driver, True, False, False)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert not outro.is_selected()
-        driver.find_element(By.XPATH, "//label[normalize-space()='Inglês']").click()
-        time.sleep(2)
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//*[contains(text(), 'Pergunta obrigatória')]")
+        conferir_idiomas(driver, True, False, False)
+        driver.find_element(By.XPATH, idioma_clique.format("Inglês")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//*[contains(text(), 'Pergunta obrigatória')]")))
         assert "Pergunta obrigatória" in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        pergunta = driver.find_element(By.XPATH, "//*[contains(text(), 'Quais idiomas você tem conhecimento?')]")
-        assert "Quais idiomas você tem conhecimento?" in pergunta.text
-        ingles = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Inglês']/@for]")
-        espanhol = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Espanhol']/@for]")
-        outro = driver.find_element(By.XPATH, "//input[@id=//label[normalize-space()='Outro']/@for]")
-        assert ingles.is_selected()
-        assert not espanhol.is_selected()
-        assert not outro.is_selected()
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, True, False, False)
     finally:
         driver.quit()
 ct047()
@@ -804,25 +666,17 @@ def ct048():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        abrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, formatura_data)
         campo.send_keys(Keys.CONTROL, "a", Keys.NULL, "01012026")
-        driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]").click()
+        driver.find_element(By.XPATH, "//span[normalize-space()='Qual sua previsão de formatura?']").click()
         time.sleep(2)
         assert "01/01/2026" in campo.get_attribute("value")
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        reabrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, formatura_data)
         assert "01/01/2026" in campo.get_attribute("value")
     finally:
         driver.quit()
@@ -834,25 +688,17 @@ def ct049():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        abrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, formatura_data)
         campo.send_keys(Keys.CONTROL, "a", Keys.NULL, "01122029")
-        driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]").click()
+        driver.find_element(By.XPATH, "//span[normalize-space()='Qual sua previsão de formatura?']").click()
         time.sleep(2)
         assert "01/12/2029" in campo.get_attribute("value")
-        driver.find_element(By.ID, "BTNSALVAR").click()
-        time.sleep(2)
-        msg = driver.find_element(By.XPATH, "//div[contains(@class, 'gx-success-message')]")
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
-        driver.refresh()
-        time.sleep(3)
-        driver.find_element(By.XPATH, "//*[normalize-space()='Dados Adicionais']").click()
-        time.sleep(3)
-        campo = driver.find_element(By.XPATH, "//*[contains(text(), 'Qual sua previsão de formatura?')]/following::input[1]")
+        reabrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, formatura_data)
         assert "01/12/2029" in campo.get_attribute("value")
     finally:
         driver.quit()
@@ -864,26 +710,84 @@ def ct050():
     wait = WebDriverWait(driver, 10)
     try:
         login(driver)
-        time.sleep(3)
-        driver.find_element(By.ID, "W0012IMAGE1").click()
+        wait.until(EC.visibility_of_element_located((By.ID, "W0012TEXTBLOCKBOASVINDAS")))
         time.sleep(2)
-        meus_dados = driver.find_element(By.XPATH, "//*[normalize-space()='Meus dados']")
-        sair = driver.find_element(By.XPATH, "//*[normalize-space()='Sair']")
+        wait.until(EC.element_to_be_clickable((By.XPATH, "//img[@alt='Foto de perfil']"))).click()
+        time.sleep(1)
+        meus_dados = wait.until(EC.visibility_of_element_located((By.XPATH, "//*[normalize-space()='Meus dados']")))
+        sair = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[normalize-space()='Sair']")))
         assert "Meus dados" in meus_dados.text
         assert "Sair" in sair.text
         sair.click()
-        time.sleep(3)
-        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        assert wait.until(EC.visibility_of_element_located((By.ID, "vLOGIN"))).is_displayed()
         driver.get('https://admin.ielcarreiras.com.br/hetpaginainicialcurriculo.aspx')
-        time.sleep(3)
-        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        assert wait.until(EC.visibility_of_element_located((By.ID, "vLOGIN"))).is_displayed()
         driver.get('https://admin.ielcarreiras.com.br/HSgpAcessoCurriculo.aspx?hetpaginainicial.aspx')
-        time.sleep(3)
-        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        assert wait.until(EC.visibility_of_element_located((By.ID, "vLOGIN"))).is_displayed()
         driver.back()
-        time.sleep(3)
-        assert driver.find_element(By.ID, "vLOGIN").is_displayed()
+        assert wait.until(EC.visibility_of_element_located((By.ID, "vLOGIN"))).is_displayed()
     finally:
         driver.quit()
 ct050()
 #cts 41-50 do Gabriel <3
+
+#CTs de restauração da conta: rodam por último para deixar a conta no estado inicial e todos os CTs passarem na próxima execução
+#51. Restaurar o Nome Civil como nome de exibição com sucesso (desfaz o CT030 e garante o CT006)
+def ct051():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "//label[@for='RSCUR_OPCAO_NOME1']"))).click()
+        time.sleep(2)
+        campo = driver.find_element(By.ID, "RSCUR_NOME")
+        campo.clear()
+        campo.send_keys("Lucas Gilberto Davi")
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Currículo atualizado com sucesso." in msg.text
+        driver.refresh()
+        wait.until(EC.visibility_of_element_located((By.ID, "RSCUR_NOME")))
+        assert driver.find_element(By.ID, "RSCUR_OPCAO_NOME1").is_selected()
+        assert driver.find_element(By.ID, "RSCUR_NOME").get_attribute("value") == "Lucas Gilberto Davi"
+        saudacao = driver.find_element(By.XPATH, "/html/body/form/div[2]/div[2]/div/div[2]/div/div/div[4]/div/div/div[2]/span")
+        assert "Bem-vindo, Lucas Gilberto Davi" in saudacao.text
+    finally:
+        driver.quit()
+ct051()
+
+#52. Restaurar PCD para Não possui com sucesso (desfaz o CT025)
+def ct052():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        wait.until(EC.element_to_be_clickable((By.ID, "W0012TEXTBLOCK2"))).click()
+        pcd = Select(wait.until(EC.visibility_of_element_located((By.ID, "GPNES_ID"))))
+        pcd.select_by_visible_text("Não possui")
+        time.sleep(2)
+        driver.find_element(By.ID, "BTNSALVAR").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Currículo atualizado com sucesso." in msg.text
+        driver.refresh()
+        pcd = Select(wait.until(EC.visibility_of_element_located((By.ID, "GPNES_ID"))))
+        assert "Não possui" in pcd.first_selected_option.text
+    finally:
+        driver.quit()
+ct052()
+
+#53. Restaurar os idiomas para Inglês e Espanhol com sucesso (pré-condição do CT041)
+def ct053():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        abrir_dados_adicionais(driver)
+        preparar_idiomas(driver, True, True, False)
+        reabrir_dados_adicionais(driver)
+        conferir_idiomas(driver, True, True, False)
+    finally:
+        driver.quit()
+ct053()
+#fim dos CTs de restauração
