@@ -214,8 +214,8 @@ def ct011():
         driver.find_element(By.XPATH,"/html/body/form/div[2]/div[2]/div/div[3]/div/div/div/div/div[2]/div/div[7]/div/div/div/div[2]/div/div[3]/div/div/div/div/div[1]/div/div[2]/div[1]/div/div/div/div/div[2]/div/div[4]/div/div/div[1]/div/div/div/div/table/tbody/tr/td[1]/p/span/a" ).click()
         time.sleep(2)
         driver.find_element(By.ID, "BTNDETALHES").click()
-        time.sleep(2)
-        aviso = driver.find_element(By.ID, "TEXTBLOCK2")
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, "gxp0_ifrm")))
+        aviso = wait.until(EC.visibility_of_element_located((By.ID, "TEXTBLOCK2")))
         assert "Vaga indisponível!" in aviso.text
     finally:
         driver.quit()
