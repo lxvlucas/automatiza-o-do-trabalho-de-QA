@@ -10,17 +10,9 @@ erro_login_msg = "/html/body/form/div[2]/div[2]/div/div[1]/div/div/div/div[2]/di
 
 #funcão: login
 def login(driver):
-        email = os.getenv("IEL_EMAIL")
-        senha = os.getenv("IEL_PASSWORD")
-        if not email or not senha:
-            raise RuntimeError("Defina IEL_EMAIL e IEL_PASSWORD antes de executar os testes.")
         driver.get('https://admin.ielcarreiras.com.br/logincandidato.aspx')
-        time.sleep(2)
-        campo = driver.find_element(By.ID, "vLOGIN")
-        campo.send_keys(Keys.CONTROL, "a", Keys.NULL, Keys.DELETE)
-        campo.send_keys(email)
-        driver.find_element(By.ID, "vSENHA").send_keys(Keys.CONTROL, "a", Keys.NULL, Keys.DELETE)
-        driver.find_element(By.ID, "vSENHA").send_keys(senha)
+        driver.find_element(By.ID, "vLOGIN").send_keys("lucasgomesantunes85@gmail.com")
+        driver.find_element(By.ID, "vSENHA").send_keys("98765lucastest")
         driver.find_element(By.ID, "vSENHA").send_keys(Keys.RETURN)
 
 #função auxiliar para garantir a pré-condição de idiomas salva no banco
@@ -180,10 +172,9 @@ def ct008():
         campo.send_keys("2378 - Estágio Técnico e/ou Superior em Engenharia Mecânica e Eletromecânica - Matutino")
         campo.send_keys(Keys.RETURN)
         time.sleep(3)
-        titulo = driver.find_element(By.ID, "W0035TEXTBLOCKTITULO_0001")
-        titulo.click()
-        time.sleep(2)
-        titulo = driver.find_element(By.ID, "TEXTBLOCKVAGA")
+        driver.find_element(By.ID, "W0035TABLE2_0001").click()
+        wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, "gxp0_ifrm")))
+        titulo = wait.until(EC.visibility_of_element_located((By.ID, "TEXTBLOCKVAGA")))
         assert "2378 - Estágio Técnico e/ou Superior em Engenharia Mecânica e Eletromecânica - Matutino" in titulo.text
     finally:
         driver.quit()
@@ -229,7 +220,7 @@ def ct011():
     finally:
         driver.quit()
 ct011()
-
+#fim das CTs do lucassssss <333
 #21. Desistir da candidatura da vaga 2380 com sucesso
 def ct021():
     driver = webdriver.Chrome()
@@ -508,8 +499,6 @@ def ct030():
     finally:
         driver.quit()
 ct030()
-
-#fim das CTs do lucassssss <333
 
 #41. Selecionar Inglês em conhecimentos de idioma com sucesso
 def ct041():
