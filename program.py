@@ -15,6 +15,13 @@ idioma_clique = idioma_checkbox + "/parent::label"
 pergunta_idiomas = "//span[normalize-space()='Quais idiomas você tem conhecimento?']"
 #campo de data da pergunta de previsão de formatura
 formatura_data = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Qual sua previsão de formatura?']]//input[contains(@id, 'vRESPOSTA_DATA')]"
+#select do Estado Civil e campo do LinkedIn em Dados Adicionais
+estado_civil = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Estado Civil']]//select[contains(@id, 'vUNICA_ESCOLHA')]"
+linkedin = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Insira o link do seu perfil no LinkedIn']]//input[contains(@id, 'vRESPOSTA_CURTA')]"
+#checkbox de uma opção da pergunta de turno (no portal a pergunta tem "de estudo" repetido mesmo)
+pergunta_turno = "//span[normalize-space()='Qual o seu turno de estudo de estudo?']"
+turno_checkbox = "//div[contains(@id, 'GRID2TABLE') and .//span[normalize-space()='Qual o seu turno de estudo de estudo?']]//span[normalize-space()='{}']/ancestor::div[contains(@id, 'GRID3TABLE')]//input[@type='checkbox']"
+turno_clique = turno_checkbox + "/parent::label"
 
 #funcão: login
 def login(driver):
@@ -64,6 +71,55 @@ def preparar_idiomas(driver, ing, esp, out):
             time.sleep(1)
             alterou = True
     if alterou:
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+
+#função: conferir quais turnos de estudo estão marcados
+def conferir_turnos(driver, manha, tarde, noite):
+    pergunta = driver.find_element(By.XPATH, pergunta_turno)
+    assert "Qual o seu turno de estudo de estudo?" in pergunta.text
+    assert driver.find_element(By.XPATH, turno_checkbox.format("Manhã")).is_selected() == manha
+    assert driver.find_element(By.XPATH, turno_checkbox.format("Tarde")).is_selected() == tarde
+    assert driver.find_element(By.XPATH, turno_checkbox.format("Noite")).is_selected() == noite
+
+#função auxiliar para garantir a pré-condição de turnos salva no banco
+def preparar_turnos(driver, manha, tarde, noite):
+    wait = WebDriverWait(driver, 10)
+    alterou = False
+    for opcao, marcar in (("Manhã", manha), ("Tarde", tarde), ("Noite", noite)):
+        checkbox = driver.find_element(By.XPATH, turno_checkbox.format(opcao))
+        if checkbox.is_selected() != marcar:
+            driver.find_element(By.XPATH, turno_clique.format(opcao)).click()
+            time.sleep(1)
+            alterou = True
+    if alterou:
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+
+#função auxiliar para garantir a pré-condição de estado civil salva no banco
+def preparar_estado_civil(driver, opcao):
+    wait = WebDriverWait(driver, 10)
+    civil = Select(driver.find_element(By.XPATH, estado_civil))
+    if civil.first_selected_option.text != opcao:
+        civil.select_by_visible_text(opcao)
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+
+#função auxiliar para garantir a pré-condição do LinkedIn salva no banco
+def preparar_linkedin(driver, texto):
+    wait = WebDriverWait(driver, 10)
+    campo = driver.find_element(By.XPATH, linkedin)
+    if campo.get_attribute("value") != texto:
+        campo.clear()
+        campo.send_keys(texto)
+        time.sleep(1)
         driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
         msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
         assert "Informações atualizadas com sucesso." in msg.text
@@ -515,6 +571,231 @@ def ct030():
     finally:
         driver.quit()
 ct030()
+
+#31. Alterar estado civil com sucesso
+def ct031():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_estado_civil(driver, "Solteiro(a)")
+        civil = Select(driver.find_element(By.XPATH, estado_civil))
+        assert "Solteiro(a)" in civil.first_selected_option.text
+        civil.select_by_visible_text("Casado(a)")
+        time.sleep(2)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        civil = Select(driver.find_element(By.XPATH, estado_civil))
+        assert "Casado(a)" in civil.first_selected_option.text
+    finally:
+        driver.quit()
+ct031()
+
+#32. Preencher LinkedIn com texto inválido com sucesso
+def ct032():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_linkedin(driver, "")
+        campo = driver.find_element(By.XPATH, linkedin)
+        assert campo.get_attribute("value") == ""
+        campo.send_keys("linkedin-invalido")
+        time.sleep(2)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, linkedin)
+        assert "linkedin-invalido" in campo.get_attribute("value")
+    finally:
+        driver.quit()
+ct032()
+
+#33. Preencher LinkedIn com URL válida com sucesso
+def ct033():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_linkedin(driver, "linkedin-invalido")
+        campo = driver.find_element(By.XPATH, linkedin)
+        assert "linkedin-invalido" in campo.get_attribute("value")
+        campo.clear()
+        time.sleep(1)
+        campo.send_keys("https://www.linkedin.com/in/lucas-teste-iel")
+        time.sleep(2)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        campo = driver.find_element(By.XPATH, linkedin)
+        assert "https://www.linkedin.com/in/lucas-teste-iel" in campo.get_attribute("value")
+    finally:
+        driver.quit()
+ct033()
+
+#34. Selecionar Noite como turno de estudo com sucesso
+def ct034():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, True, False, False)
+        conferir_turnos(driver, True, False, False)
+        driver.find_element(By.XPATH, turno_clique.format("Manhã")).click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, turno_clique.format("Noite")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, False, False, True)
+    finally:
+        driver.quit()
+ct034()
+
+#35. Selecionar Tarde e Noite como turno de estudo com sucesso
+def ct035():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, False, True, False)
+        conferir_turnos(driver, False, True, False)
+        driver.find_element(By.XPATH, turno_clique.format("Noite")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, False, True, True)
+    finally:
+        driver.quit()
+ct035()
+
+#36. Selecionar Manhã e Tarde e Noite como turno de estudo sem sucesso
+def ct036():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, False, True, False)
+        conferir_turnos(driver, False, True, False)
+        driver.find_element(By.XPATH, turno_clique.format("Manhã")).click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, turno_clique.format("Noite")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//*[contains(text(), 'Selecione no máximo 2 opções.')]")))
+        assert "Selecione no máximo 2 opções." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, False, True, False)
+    finally:
+        driver.quit()
+ct036()
+
+#37. Selecionar Manhã e Tarde como turno de estudo com sucesso
+def ct037():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, False, True, False)
+        conferir_turnos(driver, False, True, False)
+        driver.find_element(By.XPATH, turno_clique.format("Manhã")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, True, True, False)
+    finally:
+        driver.quit()
+ct037()
+
+#38. Selecionar Manhã como turno de estudo com sucesso
+def ct038():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, True, True, False)
+        conferir_turnos(driver, True, True, False)
+        driver.find_element(By.XPATH, turno_clique.format("Tarde")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, True, False, False)
+    finally:
+        driver.quit()
+ct038()
+
+#39. Selecionar Tarde como turno de estudo com sucesso
+def ct039():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, False, False, True)
+        conferir_turnos(driver, False, False, True)
+        driver.find_element(By.XPATH, turno_clique.format("Noite")).click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, turno_clique.format("Tarde")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//div[contains(@class, 'gx-success-message')]")))
+        assert "Informações atualizadas com sucesso." in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, False, True, False)
+    finally:
+        driver.quit()
+ct039()
+
+#40. Selecionar nenhum turno como turno de estudo sem sucesso
+def ct040():
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    try:
+        login(driver)
+        time.sleep(3)
+        abrir_dados_adicionais(driver)
+        preparar_turnos(driver, False, False, True)
+        conferir_turnos(driver, False, False, True)
+        driver.find_element(By.XPATH, turno_clique.format("Noite")).click()
+        time.sleep(1)
+        driver.find_element(By.ID, "W0216BTNCONFIRMARPERGUNTA").click()
+        msg = wait.until(EC.visibility_of_element_located((By.XPATH, "//*[contains(text(), 'Pergunta obrigatória')]")))
+        assert "Pergunta obrigatória" in msg.text
+        reabrir_dados_adicionais(driver)
+        conferir_turnos(driver, False, False, True)
+    finally:
+        driver.quit()
+ct040()
+#cts 31-40 do Davi
 
 #41. Selecionar Inglês em conhecimentos de idioma com sucesso
 def ct041():
